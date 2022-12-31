@@ -143,7 +143,7 @@ module Tictactoe::tictactoe {
         play(&player_one, player_one_addr, 2, 0);
         play(&player_two, player_one_addr, 1, 0);
         play(&player_one, player_one_addr, 0, 2);
-        // The grid of 5th round
+        // The grid after 5th round
         /* 
             | 2 |   | 1 |
             | 2 | 1 |   |
@@ -154,4 +154,36 @@ module Tictactoe::tictactoe {
         assert!(final_game.state == WON, EINVALID_GAME_RESULT);
         assert!(*option::borrow(&final_game.winner) == player_one_addr, EINVALID_GAME_WINNER);
     }
+
+    public fun end_to_end_with_tie(player_one: signer, player_two: signer) acquires Game {
+        let player_one_addr = signer::address_of(&player_one);
+        let player_two_addr = signer::address_of(&player_two);
+
+        start(&player_one, player_two_addr);
+        assert!(exists<Game>(player_one_addr), ERESOURCE_NOT_CREATED);
+
+        play(&player_one, player_one_addr, 1, 1);
+        let game = borrow_global_mut<Game>(player_one_addr);
+        let board_cell = vector::borrow(vector::borrow(&game.board, 1), 1);
+        assert!(*board_cell == 1, EINVALID_BOARD_VALUE);
+        play(&player_two, player_one_addr, 0, 0);
+        play(&player_one, player_one_addr, 2, 0);
+        play(&player_two, player_one_addr, 0, 2);
+        play(&player_one, player_one_addr, 2, 2);
+        play(&player_two, player_one_addr, 2, 1);
+        play(&player_one, player_one_addr, 0, 1);
+        play(&player_two, player_one_addr, 1, 0);
+        play(&player_one, player_one_addr, 1, 2);
+        // The grid after 9th round
+        /* 
+            | 2 | 1 | 2 |
+            | 2 | 1 | 2 |
+            | 1 | 2 | 1 |
+        The game looks since no player got 3 of the same in row, column or diagonally 
+        */
+        let final_game = borrow_global_mut<Game>(player_one_addr);
+        assert!(final_game.state == TIE, EINVALID_GAME_RESULT);
+        assert!(option::is_none(&final_game.winner), EINVALID_GAME_WINNER);
+    }
+    
 }
