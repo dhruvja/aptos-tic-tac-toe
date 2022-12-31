@@ -12,6 +12,7 @@ module Tictactoe::tictactoe {
     const EINVALID_BOARD_VALUE: u64 = 6;
     const EINVALID_GAME_RESULT: u64 = 7;
     const EINVALID_GAME_WINNER: u64 = 8;
+    const EINVALID_CELL: u64 = 9;
 
     // Game states
     const ACTIVE: u8 = 0;
@@ -108,6 +109,7 @@ module Tictactoe::tictactoe {
         assert!(game.state == ACTIVE, EGAME_IS_OVER);
         assert!(player_index < 3 && player_index > 0, EINVALID_PLAYER);
         assert!(game.turn == player_index, EINVALID_TURN);
+        assert!(row < 3 && column < 3, EINVALID_CELL);
         update_board(player_index, row, column, &mut game.board);
         if (player_index == 1){
             game.turn = 2;
@@ -155,6 +157,7 @@ module Tictactoe::tictactoe {
         assert!(*option::borrow(&final_game.winner) == player_one_addr, EINVALID_GAME_WINNER);
     }
 
+    #[test(player_one = @0x2, player_two = @0x3)]
     public fun end_to_end_with_tie(player_one: signer, player_two: signer) acquires Game {
         let player_one_addr = signer::address_of(&player_one);
         let player_two_addr = signer::address_of(&player_two);
@@ -185,5 +188,63 @@ module Tictactoe::tictactoe {
         assert!(final_game.state == TIE, EINVALID_GAME_RESULT);
         assert!(option::is_none(&final_game.winner), EINVALID_GAME_WINNER);
     }
+
+
+    #[test(player_one = @0x2, player_two = @0x3)]
+    #[expected_failure(abort_code = 3)]
+    public fun cannot_play_out_of_turn(player_one: signer, player_two: signer) acquires Game {
+        let player_one_addr = signer::address_of(&player_one);
+        let player_two_addr = signer::address_of(&player_two);
+
+        start(&player_one, player_two_addr);
+        assert!(exists<Game>(player_one_addr), ERESOURCE_NOT_CREATED);
+
+        play(&player_one, player_one_addr, 1, 1);
+        let game = borrow_global_mut<Game>(player_one_addr);
+        let board_cell = vector::borrow(vector::borrow(&game.board, 1), 1);
+        assert!(*board_cell == 1, EINVALID_BOARD_VALUE);
+        // This is player two's turn, so it will abort
+        play(&player_one, player_one_addr, 0, 0);
+    }   
+
+    #[test(player_one = @0x2, player_two = @0x3)]
+    #[expected_failure(abort_code = 4)]
+    public fun cannot_play_after_game_is_over(player_one: signer, player_two: signer) acquires Game {
+        let player_one_addr = signer::address_of(&player_one);
+        let player_two_addr = signer::address_of(&player_two);
+
+        start(&player_one, player_two_addr);
+        assert!(exists<Game>(player_one_addr), ERESOURCE_NOT_CREATED);
+
+        play(&player_one, player_one_addr, 1, 1);
+        let game = borrow_global_mut<Game>(player_one_addr);
+        let board_cell = vector::borrow(vector::borrow(&game.board, 1), 1);
+        assert!(*board_cell == 1, EINVALID_BOARD_VALUE);
+        play(&player_two, player_one_addr, 0, 0);
+        play(&player_one, player_one_addr, 2, 0);
+        play(&player_two, player_one_addr, 1, 0);
+        play(&player_one, player_one_addr, 0, 2);
+        let final_game = borrow_global_mut<Game>(player_one_addr);
+        assert!(final_game.state == WON, EINVALID_GAME_RESULT);
+        assert!(*option::borrow(&final_game.winner) == player_one_addr, EINVALID_GAME_WINNER);
+        play(&player_two, player_one_addr, 2,2);
+    }   
+
+    #[test(player_one = @0x2, player_two = @0x3)]
+    #[expected_failure(abort_code = 2)]
+    public fun cannot_choose_already_played_box(player_one: signer, player_two: signer) acquires Game {
+        let player_one_addr = signer::address_of(&player_one);
+        let player_two_addr = signer::address_of(&player_two);
+
+        start(&player_one, player_two_addr);
+        assert!(exists<Game>(player_one_addr), ERESOURCE_NOT_CREATED);
+
+        play(&player_one, player_one_addr, 1, 1);
+        let game = borrow_global_mut<Game>(player_one_addr);
+        let board_cell = vector::borrow(vector::borrow(&game.board, 1), 1);
+        assert!(*board_cell == 1, EINVALID_BOARD_VALUE);
+        //This will abort since 1,1 is already filled 
+        play(&player_two, player_one_addr, 1, 1);
+    }  
     
 }
