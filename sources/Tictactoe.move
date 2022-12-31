@@ -103,9 +103,15 @@ module Tictactoe::tictactoe {
         assert!(player_index < 2, EINVALID_PLAYER);
         assert!(game.turn == player_index, EINVALID_TURN);
         update_board(&mut player_index, row, column, &mut game.board);
+        game.turns_played = game.turns_played + 1;
         if (check_winner(player_index, &game.board) == true) {
             game.state = WON;
             game.winner = option::some(player_addr);
-        };
+        }   
+        else{
+            if (games.turns_played == 9){
+                game.state = TIE;
+            }
+        }
     }
 }
